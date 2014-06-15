@@ -76,84 +76,87 @@ def diffmat(x):
         D[k,k] = d[k]
     return -D.T
 
-N = 20
+N= 20
 x= -np.cos(np.pi*np.arange(N+1)/N) #collocation points
 
 D= diffmat(x)  #derivative matrices
 D2= np.dot(D,D)
 
-dt= 0.0001       #time step
-g= 1.           #diffusion constant
+dt= 0.00001       #time step
 
-E= linalg.inv(np.identity(N+1)-g*dt*D2)  #evolution matrix for implicit diffusion calculation
+L= 0.4      #HB interface
+tau= 1.9    #
+tauT1= 3.9 #
+h0= 0.3  #relative to total length of wing
+k= 30.
+K1= 2.
+K2= 4.
+Gamma= 300.
+lambda1= 1.
+lambda2_h= 0.
+lambda2_b= -.07
+zeta_h= 0.
+zeta_b= 0.
+zetabar_h= 5.
+zetabar_b=0.
 
-sigma= 0.1
-mu= 0.5
-#f0= np.array(map(lambda z: 1/np.sqrt(20*np.pi*sigma**2)*np.exp(-(z)*(z)/(2*sigma**2)),x))
-#f0= np.array(map(lambda z: 1/(1+np.exp(-(z-mu)/sigma)),x))
-f0= np.array(map(lambda z: 0.*z, x))
-#force= np.array(map(lambda z: (z-1)*(z+1),x))
-#f0= np.array(map(lambda z: 1/(np.sqrt(2*np.pi/30))*np.exp(-(z-0.5)*(z-0.5)*30)-1/(np.sqrt(2*np.pi/30))*np.exp(-(z+0.5)*(z+0.5)*30), x))
-#f0= np.array(map(lambda z: np.sin(z*np.pi), x))
+Q_plus= np.zeros(N+1)
+Q_minus= np.zeros(N+1)
+v_x= np.zeros(N+1)
+v_yy= np.zeros(N+1)
+h= np.zeros(N+1)+h0
+T_minus= np.zeros(N+1)
+sigma_xx= np.zeros(N+1)
+sigma_yy= np.zeros(N+1)
 
-f= f0
-f[0]= np.sin(0)
-f[-1]= -np.sin(0)
 
-t0= 1.
+t0= 3.
 mu= 0.
 sigma= 0.02
-sigma_t= 0.3
+sigma_t= 0.5
 # boundary_a= lambda x: np.sin(x*dt*np.pi/5.)
 # boundary_b= lambda x: np.sin(2*x*dt*np.pi/300.)
-active= np.array(map(lambda x: 1./(1+np.exp((x-mu)/sigma)),x)+)*1./(1+np.exp(t0/sigma_t))
-p= f
+active= np.array(map(lambda x: 1./(1+np.exp((x-mu)/sigma)),x))*1./(1+np.exp(t0/sigma_t))
 
-
-s= BI(x, p)
-print s
 rng= np.linspace(-1,1,1000)
-# plt.figure()
-# plt.plot(rng, map(s,rng))
-# plt.show()
-for i in np.arange(300000):
-    # A= np.identity(N+1)-g*dt*D2
-    # A[-1,:]= D[-1,:]
-    # v= p - dt*p*D.dot(p)
-    # v[-1]= 0.
-    # p= sp.linalg.solve(A, v)
+
+for i in np.arange(2000000):
+    zeta= zeta_h*active + zeta_b
+    zetabar= zetabar_h*active + zetabar_b
+    lambda2= lambda2_h*active + lambda2_b
     ac_factor= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0)/sigma_t)),active))
-    active_new= active+ dt*(1./sigma_t*(active-active*active/ac_factor)-1* p*D.dot(active))
-    p= E.dot(p-dt*p*D.dot(p)+ 1*D.dot(active_new-active))
-    if i%3000 == 0:
-        print i*dt, np.min(p), np.max(active), np.max(ac_factor)
+    active_new= active+ dt*(1./sigma_t*(active-active*active/ac_factor)-1* v_x*D.dot(active))
+    dxvx= D.dot(v_x)
+    Q_plus= Q_plus + dt*(dxvx + v_yy-v_x*D.dot(Q_plus))
+    Q_minus= Q_minus + dt*(dxvx - v_yy - T_minus-v_x*D.dot(Q_minus))
+    T_minus = T_minus + dt/tauT1*(-T_minus+lambda1*0.5*(sigma_xx-sigma_yy)+lambda2*active-v_x*D.dot(T_minus))
+    sigma_xx= K1*Q_minus + K2*Q_plus + zeta + zetabar
+    sigma_yy= -1*K1*Q_minus + K2*Q_plus - zeta + zetabar
+    H= np.log(h/h0)
+    v_x= 1./Gamma*(sigma_xx*D.dot(H) + D.dot(sigma_xx))
+    h_new= sigma_yy/k + h0
+    v_yy= 1./h*(h_new-h)/dt+1./h*v_x*D.dot(h)
+    h= h_new
+    if i%10000 == 0:
+        print i*dt, np.min(v_x), np.max(active), np.max(ac_factor), np.min(h), np.min(T_minus), np.max(T_minus)
     active= active_new#/np.max(ac_factor)
-    p[0]= 0.#boundary_a(i)
-    p[-1]= 0.#boundary_b(i)
-    if i%3000 == 0:
-        f= p
-        s= BI(x, f)
+    v_x[0]= 0.#boundary_a(i)
+    v_x[-1]= 0.#boundary_b(i)
+    if i%10000 == 0:
+        s= BI(x, v_x)
         sa= BI(x, active)
+        sh= BI(x, h)
+        sQ= BI(x,Q_minus)
+        sT= BI(x,T_minus)
         rng= np.linspace(-1,1,1000)
         plt.figure()
         plt.plot(rng, map(s,rng))
         plt.plot(rng, np.array(map(sa, rng))/10.)
+        plt.plot(rng, np.array(map(sh, rng))/10.)
+        plt.plot(rng, np.array(map(sQ,rng))/10.)
+        plt.plot(rng, np.array(map(sT, rng))/10.)
         plt.grid()
         plt.ylim(-0.5,0.11)
         #plt.show()
-        plt.savefig('/Users/mpopovic/Documents/Work/Projects/drosophila_wing_analysis/pseudospectral_integrator/test'+ fill_zeros(str(i/3000),4)+'.png')
+        plt.savefig('/home/mpopovic/Documents/Work/Projects/drosophila_wing_analysis/thin_wing_model_pseudospectral/test'+ fill_zeros(str(i/10000),4)+'.png')
         plt.close()
-
-
-
-#active= new_active
-# two_P= np.zeros(2*N+1)
-# P= ifcglt(p)
-# two_P[:21]= P
-# two_p= fcglt(two_P)
-# two_nonlin= -two_p*two_D.dot(two_p)
-# two_nonlin_tran= ifcglt(two_nonlin)
-# nonlin_tran= two_nonlin_tran[:21]
-# nonlin= fcglt(nonlin_tran)
-
-
