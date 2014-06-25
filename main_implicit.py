@@ -83,22 +83,29 @@ x= -np.cos(np.pi*np.arange(N+1)/N) #collocation points
 D= diffmat(x)  #derivative matrices
 D2= np.dot(D,D)
 
-dt= 0.0001       #time step
+dt= 0.002       #time step
 
 L= -0.1      #HB interface
-tauT1= 5.5 #
-h0= 0.4  #relative to total length of wing
+tauT1= 3.66 #
+h0= 0.5  #relative to total length of wing
 k= 35.
-K1= 1.
+K1= 1
 K2= 2.
-Gamma= 150.
+Gamma= 150.0
 lambda1= 1
-lambda2_h= .05
-lambda2_b= .10
-zeta_h= -.16
-zeta_b= -.17
-zetabar_h= 3.
-zetabar_b=0.
+tau= 1./2./lambda1/K1 ## TODO - check!!!
+#tau= 1.
+lambda2_h= .11
+lambda2_b= .11
+zeta_h= -.27
+zeta_b= -.21
+zetabar_h= 2.
+zetabar_b= 0.
+#xi_h= 0.655
+#xi_b= 0.29
+
+M= np.array([[1.,0.,0.],[0.,1.,dt],[0.,-dt/tau,tauT1+dt]])
+M_inv= np.linalg.inv(M)
 
 Q_plus= np.zeros(N+1)
 Q_minus= np.zeros(N+1)
@@ -106,8 +113,6 @@ v_x= np.zeros(N+1)
 v_yy= np.zeros(N+1)
 h= np.zeros(N+1)+h0
 T_minus= np.zeros(N+1)
-sigma_xx= np.zeros(N+1)
-sigma_yy= np.zeros(N+1)
 
 
 t0_a= 10.8
@@ -129,8 +134,16 @@ avg_Q_minus_blade= []
 avg_T_minus_blade= []
 avg_shear_blade= []
 
-for i in np.arange(350000):
-    if i%1000 == 0:
+zeta= zeta_h*active_space_a + zeta_b*active_const_a
+zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
+lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
+#xi = xi_h*active_space_a + xi_b*active_const_a
+
+n_images= 75
+image_step= 200
+
+for i in np.arange(n_images*image_step):
+    if i%image_step == 0:
         fig= plt.figure(figsize=(20,16))
         gs= gridspec.GridSpec(3,3)
         ax0= fig.add_subplot(gs[1:,1:])
@@ -142,11 +155,12 @@ for i in np.arange(350000):
         axT_minuse.set_title('T_minus')
         axshear= fig.add_subplot(gs[2,0])
         axshear.set_title('shear')
-        interpolator.set_yi(active_space_i)
-        HB_int= np.argmin(np.array(map(interpolator,rng)))
+        interpolator.set_yi(active_space_a)
+        ac_space_a_plot= np.array(map(interpolator, rng))
+        HB_int= np.argmin(np.abs(ac_space_a_plot- 0.5*(np.max(ac_space_a_plot)-np.min(ac_space_a_plot))))
         print HB_int
         ax0.plot(rng, np.array(map(interpolator, rng))/10.+ np.max(active_const_a)/10.,label= 'active_a')
-        interpolator.set_yi(active_space_a)
+        interpolator.set_yi(active_space_i)
         ax0.plot(rng, np.array(map(interpolator, rng))/10.+ np.max(active_const_i)/10.,label= 'active_i')
         interpolator.set_yi(v_x)
         ax0.plot(rng, np.array(map(interpolator,rng))*3., label= 'vx')
@@ -176,6 +190,7 @@ for i in np.arange(350000):
         ax0.plot(rng, vyy_plot, label='v_yy', color='black', linestyle='-.')
         avg_shear_blade.append(np.sum(vxx_plot[HB_int:]-vyy_plot[HB_int:])*x_step/(rng[-1]-rng[HB_int]))
         axshear.plot(range(len(avg_h_blade)),avg_shear_blade)
+        axshear.set_xlim([0,350])
         ax= plt.gca()
         ax0.text(0.1,0.9,str(dt*i-10.), transform=ax.transAxes, fontsize= 20)
         ax0.grid()
@@ -185,11 +200,14 @@ for i in np.arange(350000):
         axshear.grid()
         ax0.legend()
         ax0.set_ylim([-.16,.3])
-        plt.savefig('/home/mpopovic/Documents/Work/Projects/drosophila_wing_analysis/thin_wing_model_pseudospectral/test'+ fill_zeros(str(i/1000),4)+'.png')
+        plt.savefig('/home/mpopovic/Documents/Work/Projects/drosophila_wing_analysis/thin_wing_model_pseudospectral/implicit/test'+ fill_zeros(str(i/image_step),4)+'.png')
         plt.close()
-    zeta= zeta_h*active_space_a + zeta_b*active_const_a
-    zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
-    lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
+    dxvx= D.dot(v_x)
+    a0= dt*dxvx + dt*v_yy + Q_plus - dt*v_x*D.dot(Q_plus)
+    a1= dt*dxvx - dt*v_yy + Q_minus - dt*v_x*D.dot(Q_minus)
+    a2= tauT1*T_minus + dt*2*dt*(zeta*lambda1 + lambda2) #xi
+    a= np.array([a0,a1,a2])
+    Q_plus, Q_minus, T_minus= np.linalg.solve(M,a)
     ac_factor_const_a= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0_a)/sigma_t_a)),active_const_a))
     ac_factor_space_a= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0_a)/sigma_t_a)),active_space_a))
     ac_factor_const_i= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0_i)/sigma_t_i)),active_const_i))
@@ -198,22 +216,20 @@ for i in np.arange(350000):
     active_space_new_a= active_space_a+ dt*(1./sigma_t_a*(active_space_a-active_space_a*active_space_a/ac_factor_space_a)-1* v_x*D.dot(active_space_a))
     active_const_new_i= active_const_i+ dt*(1./sigma_t_i*(active_const_i-active_const_i*active_const_i/ac_factor_const_i))#-1* v_x*D.dot(active_const))
     active_space_new_i= active_space_i+ dt*(1./sigma_t_i*(active_space_i-active_space_i*active_space_i/ac_factor_space_i)-1* v_x*D.dot(active_space_i))
-    dxvx= D.dot(v_x)
-    Q_plus= Q_plus + dt*(dxvx + v_yy-v_x*D.dot(Q_plus))
-    Q_minus= Q_minus + dt*(dxvx - v_yy - T_minus-v_x*D.dot(Q_minus))
-    T_minus = T_minus + dt/tauT1*(-T_minus+lambda1*(sigma_xx-sigma_yy)+lambda2-v_x*D.dot(T_minus))
-    sigma_xx= K1*Q_minus + K2*Q_plus + zeta + zetabar
-    sigma_yy= -1*K1*Q_minus + K2*Q_plus - zeta + zetabar
-    H= np.log(h/h0)
-    v_x= 1./Gamma*(sigma_xx*D.dot(H) + D.dot(sigma_xx))
-    h_new= -sigma_yy/k + h0
-    v_yy= 1./h*(h_new-h)/dt+1./h*v_x*D.dot(h)
-    h= h_new
-    if i%1000 == 0:
-        print i*dt, np.min(v_x), np.max(active_space_a), np.max(ac_factor_space_a),np.max(active_space_i), np.min(h), np.min(T_minus), np.max(T_minus)
     active_const_a= active_const_new_a
     active_space_a= active_space_new_a
     active_const_i= active_const_new_i
     active_space_i= active_space_new_i
+    zeta= zeta_h*active_space_a + zeta_b*active_const_a
+    zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
+    #xi = xi_h*active_space_a + xi_b*active_const_a
+    lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
+    h_new= -1./k*(K2*Q_plus - K1*Q_minus) + h0 + (zeta - zetabar)/k
+    v_yy= (h_new - h)/dt + v_x*D.dot(h)
+    h= h_new
+    H= np.log(h/h0)
+    v_x= 1./Gamma*((K1*Q_minus + K2*Q_plus + zetabar + zeta)*D.dot(H) + D.dot(K1*Q_minus + K2*Q_plus + zeta + zetabar))
+    if i%image_step == 0:
+        print i*dt, np.min(v_x), np.max(active_space_a), np.max(ac_factor_space_a),np.max(active_space_i), np.min(h), np.min(T_minus), np.max(T_minus)
     v_x[0]= 0.#boundary_a(i)
     v_x[-1]= 0.#boundary_b(i)
