@@ -77,7 +77,7 @@ def diffmat(x):
         D[k,k] = d[k]
     return -D.T
 
-N= 12
+N= 20
 x= -np.cos(np.pi*np.arange(N+1)/N) #collocation points
 
 D= diffmat(x)  #derivative matrices
@@ -88,7 +88,7 @@ dt= 0.001       #time step
 L= -0.1      #HB interface
 tauT1= 3.7 #
 h0= 1./2.4  #relative to total length of wing
-k= 20.
+k= 25.
 K1= 1.
 K2= 10.
 Gamma= 300.0
@@ -97,11 +97,11 @@ lambda1=1./2./tau/K1
 print lambda1
 #tau= 1.
 lambda2_h= -.05
-lambda2_b= -.06
+lambda2_b= -.055
 zeta_h= .04
 zeta_b= .025
-zetabar_h= 3.
-zetabar_b= 0.
+zetabar_h= 5.
+zetabar_b= 2.
 #xi_h= 0.655
 #xi_b= 0.29
 
