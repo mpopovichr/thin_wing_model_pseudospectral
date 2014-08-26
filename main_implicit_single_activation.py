@@ -77,28 +77,29 @@ def diffmat(x):
         D[k,k] = d[k]
     return -D.T
 
-N= 20
+N= 12
 x= -np.cos(np.pi*np.arange(N+1)/N) #collocation points
 
 D= diffmat(x)  #derivative matrices
 D2= np.dot(D,D)
 
-dt= 0.002       #time step
+dt= 0.001       #time step
 
 L= -0.1      #HB interface
 tauT1= 3.7 #
-h0= 0.5  #relative to total length of wing
-k= 35.
-K1= 1
-K2= 2.
-Gamma= 350.0
-lambda1= 1
+h0= 1./2.4  #relative to total length of wing
+k= 20.
+K1= 1.
+K2= 10.
+Gamma= 300.0
 tau= 1.7 ## TODO - check!!!
+lambda1=1./2./tau/K1
+print lambda1
 #tau= 1.
-lambda2_h= .11
-lambda2_b= .11
-zeta_h= -.27
-zeta_b= -.21
+lambda2_h= -.05
+lambda2_b= -.06
+zeta_h= .04
+zeta_b= .025
 zetabar_h= 3.
 zetabar_b= 0.
 #xi_h= 0.655
@@ -114,14 +115,13 @@ v_yy= np.zeros(N+1)
 h= np.zeros(N+1)+h0
 T_minus= np.zeros(N+1)
 
-
 t0_a= 10.8
-sigma_t_a= 0.2
+sigma_t_a= 0.4
 sigma= 0.04
 active_space_a= np.array(map(lambda x: 1./(1+np.exp((x-L)/sigma)),x))*1./(1+np.exp(t0_a/sigma_t_a))
 active_const_a= np.array(map(lambda x: 1.,x))*1./(1+np.exp(t0_a/sigma_t_a))
-t0_i= 12.2
-sigma_t_i= .8
+t0_i= 11.6
+sigma_t_i= .6
 sigma= 0.04
 active_space_i= np.array(map(lambda x: 1./(1+np.exp((x-L)/sigma)),x))*1./(1+np.exp(t0_i/sigma_t_i))
 active_const_i= np.array(map(lambda x: 1.,x))*1./(1+np.exp(t0_i/sigma_t_i))
@@ -139,8 +139,8 @@ zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
 lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
 #xi = xi_h*active_space_a + xi_b*active_const_a
 
-n_images= 150
-image_step= 200
+n_images= 35
+image_step= 1*1000
 
 for i in np.arange(n_images*image_step):
     if i%image_step == 0:
@@ -205,7 +205,7 @@ for i in np.arange(n_images*image_step):
     dxvx= D.dot(v_x)
     a0= dt*dxvx + dt*v_yy + Q_plus - dt*v_x*D.dot(Q_plus)
     a1= dt*dxvx - dt*v_yy + Q_minus - dt*v_x*D.dot(Q_minus)
-    a2= tauT1*T_minus + dt*2*dt*(zeta*lambda1 + lambda2) #xi
+    a2= tauT1*T_minus + 2*dt*(zeta*lambda1 + lambda2) #xi
     a= np.array([a0,a1,a2])
     Q_plus, Q_minus, T_minus= np.linalg.solve(M,a)
     ac_factor_const_a= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0_a)/sigma_t_a)),active_const_a))
