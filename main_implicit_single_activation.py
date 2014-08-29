@@ -87,21 +87,23 @@ dt= 0.001       #time step
 
 L= -0.1      #HB interface
 tauT1= 3.7 #
-h0= 1./2.4  #relative to total length of wing
-k= 25.
+h0= 2./2.4  #relative to total length of wing
+k= 20.
 K1= 1.
 K2= 10.
-Gamma= 300.0
+Gamma= 250.0
 tau= 1.7 ## TODO - check!!!
-lambda1=1./2./tau/K1
-print lambda1
+lambda1=1./tau
+#print lambda1
 #tau= 1.
-lambda2_h= -.05
-lambda2_b= -.055
-zeta_h= .04
-zeta_b= .025
-zetabar_h= 5.
+lambda2_h= -.09
+lambda2_b= -.06
+zeta_h= .0
+zeta_b= .0
+zetabar_h= 5
 zetabar_b= 2.
+eta_i_b= 0.
+eta_i_h= 0.
 #xi_h= 0.655
 #xi_b= 0.29
 
@@ -115,15 +117,16 @@ v_yy= np.zeros(N+1)
 h= np.zeros(N+1)+h0
 T_minus= np.zeros(N+1)
 
-t0_a= 10.8
-sigma_t_a= 0.4
+t0_a= 10.5
+sigma_t_a= 0.5
 sigma= 0.04
 active_space_a= np.array(map(lambda x: 1./(1+np.exp((x-L)/sigma)),x))*1./(1+np.exp(t0_a/sigma_t_a))
 active_const_a= np.array(map(lambda x: 1.,x))*1./(1+np.exp(t0_a/sigma_t_a))
-t0_i= 11.6
-sigma_t_i= .6
+t0_i= 11.7
+sigma_t_i= .8
 sigma= 0.04
 active_space_i= np.array(map(lambda x: 1./(1+np.exp((x-L)/sigma)),x))*1./(1+np.exp(t0_i/sigma_t_i))
+active_space_b= np.array(map(lambda x: 1./(1+np.exp((L-x)/sigma)),x))*1./(1+np.exp(t0_i/sigma_t_i))
 active_const_i= np.array(map(lambda x: 1.,x))*1./(1+np.exp(t0_i/sigma_t_i))
 
 rng= np.linspace(-1,1,1000)
@@ -137,6 +140,8 @@ avg_shear_blade= []
 zeta= zeta_h*active_space_a + zeta_b*active_const_a
 zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
 lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
+#eta_i= eta_i_h*active_space_i + eta_i_b*active_const_i
+
 #xi = xi_h*active_space_a + xi_b*active_const_a
 
 n_images= 35
@@ -203,9 +208,9 @@ for i in np.arange(n_images*image_step):
         plt.savefig('/home/mpopovic/Documents/Work/Projects/drosophila_wing_analysis/thin_wing_model_pseudospectral/implicit/test'+ fill_zeros(str(i/image_step),4)+'.png')
         plt.close()
     dxvx= D.dot(v_x)
-    a0= dt*dxvx + dt*v_yy + Q_plus - dt*v_x*D.dot(Q_plus)
-    a1= dt*dxvx - dt*v_yy + Q_minus - dt*v_x*D.dot(Q_minus)
-    a2= tauT1*T_minus + 2*dt*(zeta*lambda1 + lambda2) #xi
+    a0= dt*dxvx + dt*v_yy/h + Q_plus - dt*v_x*D.dot(Q_plus)
+    a1= dt*dxvx - dt*v_yy/h + Q_minus - dt*v_x*D.dot(Q_minus)
+    a2= tauT1*T_minus + 2*dt*(lambda2) #xi
     a= np.array([a0,a1,a2])
     Q_plus, Q_minus, T_minus= np.linalg.solve(M,a)
     ac_factor_const_a= np.array(map(lambda x: x*(1+np.exp(-(i*dt-t0_a)/sigma_t_a)),active_const_a))
@@ -222,13 +227,14 @@ for i in np.arange(n_images*image_step):
     active_space_i= active_space_new_i
     zeta= zeta_h*active_space_a + zeta_b*active_const_a
     zetabar= zetabar_h*active_space_i + zetabar_b*active_const_i
+    eta_i=eta_i_h*active_space_i + eta_i_b*active_const_i
     #xi = xi_h*active_space_a + xi_b*active_const_a
     lambda2= lambda2_h*active_space_a + lambda2_b*active_const_a
-    h_new= -1./k*(K2*Q_plus - K1*Q_minus) + h0 + (zeta - zetabar)/k
-    v_yy= (h_new - h)/dt + v_x*D.dot(h)
+    h_new= -1./k*(K2*Q_plus - K1*Q_minus) + h0 + (zeta - zetabar)/k - eta_i*(dxvx + v_yy)/k
+    v_yy= ((h_new - h)/dt + v_x*D.dot(h))
     h= h_new
-    H= np.log(h/h0)
-    v_x= 1./Gamma*((K1*Q_minus + K2*Q_plus + zetabar + zeta)*D.dot(H) + D.dot(K1*Q_minus + K2*Q_plus + zeta + zetabar))
+    H= np.log(h)
+    v_x= 1./Gamma*((K1*Q_minus + K2*Q_plus + zetabar + zeta +eta_i*(dxvx + v_yy))*D.dot(H) + D.dot(K1*Q_minus + K2*Q_plus + zeta + zetabar+eta_i*(dxvx + v_yy)))
     if i%image_step == 0:
         print i*dt, np.min(v_x), np.max(active_space_a), np.max(ac_factor_space_a),np.max(active_space_i), np.min(h), np.min(T_minus), np.max(T_minus)
     v_x[0]= 0.#boundary_a(i)

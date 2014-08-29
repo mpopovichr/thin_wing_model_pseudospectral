@@ -38,7 +38,7 @@
       <file leaf-file-name="main_implicit.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main_implicit.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="88" column="10" selection-start="2429" selection-end="2429" vertical-scroll-proportion="0.0" vertical-offset="1594" max-vertical-offset="5520">
+            <state line="88" column="10" selection-start="2429" selection-end="2429" vertical-scroll-proportion="0.0" vertical-offset="4285" max-vertical-offset="5313">
               <folding />
             </state>
           </provider>
@@ -47,7 +47,7 @@
       <file leaf-file-name="main_implicit_single_activation.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main_implicit_single_activation.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="234" column="29" selection-start="0" selection-end="8956" vertical-scroll-proportion="0.82857144" vertical-offset="4715" max-vertical-offset="5520">
+            <state line="241" column="0" selection-start="0" selection-end="9239" vertical-scroll-proportion="0.82857144" vertical-offset="4876" max-vertical-offset="5681">
               <folding>
                 <element signature="e#25#56#0" expanded="true" />
               </folding>
@@ -328,7 +328,11 @@
       <created>1409079101176</created>
       <updated>1409079101176</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="for group seminar update">
+      <created>1409079867275</created>
+      <updated>1409079867275</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -386,7 +390,8 @@
     <MESSAGE value="beginnig of implicit" />
     <MESSAGE value="simple implicit (only for Q_+, Q_- and T_-)" />
     <MESSAGE value="for group seminar" />
-    <option name="LAST_COMMIT_MESSAGE" value="for group seminar" />
+    <MESSAGE value="for group seminar update" />
+    <option name="LAST_COMMIT_MESSAGE" value="for group seminar update" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -494,7 +499,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/main_implicit_single_activation.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="234" column="29" selection-start="0" selection-end="8956" vertical-scroll-proportion="0.82857144" vertical-offset="4715" max-vertical-offset="5520">
+        <state line="241" column="0" selection-start="0" selection-end="9239" vertical-scroll-proportion="0.82857144" vertical-offset="4876" max-vertical-offset="5681">
           <folding>
             <element signature="e#25#56#0" expanded="true" />
           </folding>
